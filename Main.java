@@ -23,8 +23,9 @@ public class Main {
                         Matcher matcher = pattern.matcher(file.getName());
                         if (matcher.find()) {
                             String identifier = matcher.group(1);  // 获取匹配的英数字字符串
-                            if (findInJavaFolder(identifier + "Page.java", javaFolder)) {
-                                writer.write("Found: " + new File(javaFolder, identifier + "Page.java").getPath() + "\n");
+                            File foundJavaFile = findInJavaFolder(identifier + "Page.java", javaFolder);
+                            if (foundJavaFile != null) {
+                                writer.write("Found: " + foundJavaFile.getAbsolutePath() + "\n");
                             } else {
                                 writer.write("Not Found: " + identifier + "Page.java\n");
                             }
@@ -35,23 +36,24 @@ public class Main {
         }
     }
 
-    private static boolean findInJavaFolder(String javaFileName, File folder) {
+    private static File findInJavaFolder(String javaFileName, File folder) {
         if (folder.isDirectory()) {
             File[] files = folder.listFiles();
             if (files != null) {
                 for (File file : files) {
                     if (file.isDirectory()) {
                         // 递归搜索子文件夹
-                        if (findInJavaFolder(javaFileName, file)) {
-                            return true;
+                        File foundFile = findInJavaFolder(javaFileName, file);
+                        if (foundFile != null) {
+                            return foundFile;
                         }
                     } else if (file.getName().equals(javaFileName)) {
-                        return true;
+                        return file;  // 返回匹配的文件对象
                     }
                 }
             }
         }
-        return false;
+        return null;  // 没有找到文件
     }
 
     public static void main(String[] args) throws IOException {
