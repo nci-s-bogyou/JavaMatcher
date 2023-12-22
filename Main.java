@@ -15,19 +15,21 @@ public class Main {
             // 遍历XLS文件夹
             File[] files = xlsFolder.listFiles();
             if (files != null) {
-                for (File file : files) {
-                    if (file.isDirectory()) {
+                for (File xlsFile : files) {
+                    if (xlsFile.isDirectory()) {
                         // 递归搜索子文件夹
-                        findJavaFiles(file, javaFolder, writer);
-                    } else if (file.getName().endsWith(".xlsx")) {
-                        Matcher matcher = pattern.matcher(file.getName());
+                        findJavaFiles(xlsFile, javaFolder, writer);
+                    } else if (xlsFile.getName().endsWith(".xlsx")) {
+                        Matcher matcher = pattern.matcher(xlsFile.getName());
                         if (matcher.find()) {
                             String identifier = matcher.group(1);  // 获取匹配的英数字字符串
                             File foundJavaFile = findInJavaFolder(identifier + "Page.java", javaFolder);
                             if (foundJavaFile != null) {
-                                writer.write("Found: " + foundJavaFile.getAbsolutePath() + "\n");
+                                writer.write("JavaPath: " + foundJavaFile.getAbsolutePath() +
+                                        " -> ExcelPath: " + xlsFile.getAbsolutePath() + "\n");
                             } else {
-                                writer.write("Not Found: " + identifier + "Page.java\n");
+                                writer.write("Not Found JavaPath: " + identifier + "Page.java" +
+                                        " -> ExcelPath: " + xlsFile.getAbsolutePath() + "\n");
                             }
                         }
                     }
