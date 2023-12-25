@@ -1,78 +1,83 @@
+import java.io.IOException;
+import java.nio.file.*;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.util.ArrayList;
+import java.util.List;
 import java.io.*;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
-//请输入XLS文件夹的路径:
-//C:\qmy_java_demo\JavaMatcherTestEnvironment\ExcelFile
-//请输入Java文件夹的路径:
-//C:\qmy_java_demo\JavaMatcherTestEnvironment\JavaFile
 public class Main {
 
-    private static void findJavaFiles(File xlsFolder, File javaFolder, FileWriter writer) throws IOException {
-        Pattern pattern = Pattern.compile("画面定義書_([a-zA-Z0-9]+)_");
+    public static List<CodeFile> flexibleFileFinder(String path){
+        List<CodeFile> codeFileList = new ArrayList<>();
 
-        if (xlsFolder.isDirectory()) {
-            // 遍历XLS文件夹
-            File[] files = xlsFolder.listFiles();
-            if (files != null) {
-                for (File xlsFile : files) {
-                    if (xlsFile.isDirectory()) {
-                        // 递归搜索子文件夹
-                        findJavaFiles(xlsFile, javaFolder, writer);
-                    } else if (xlsFile.getName().endsWith(".xlsx")) {
-                        Matcher matcher = pattern.matcher(xlsFile.getName());
-                        if (matcher.find()) {
-                            String identifier = matcher.group(1);  // 获取匹配的英数字字符串
-                            File foundJavaFile = findInJavaFolder(identifier + "Page.java", javaFolder);
-                            if (foundJavaFile != null) {
-                                writer.write("JavaPath: " + foundJavaFile.getAbsolutePath() +
-                                        " -> ExcelPath: " + xlsFile.getAbsolutePath() + "\n");
-                            } else {
-                                writer.write("Not Found JavaPath: " + identifier + "Page.java" +
-                                        " -> ExcelPath: " + xlsFile.getAbsolutePath() + "\n");
-                            }
+        String pathPattern = path.replace("\\", "\\\\").replace("*", ".*");
+        String startDir;
+
+        if (pathPattern.contains("*")) {
+            startDir = pathPattern.substring(0, pathPattern.indexOf("*")).replace(".*", "");
+        } else {
+            startDir = pathPattern;
+        }
+
+        Path startPath = Paths.get(startDir);
+        if (!Files.exists(startPath)) {
+            System.out.println("The start path does not exist: " + startPath);
+            return null;
+        }
+
+        try {
+            Files.walkFileTree(startPath, new SimpleFileVisitor<Path>() {
+                @Override
+                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
+                    if (file.toString().matches(pathPattern)) {
+                        CodeFile codeFile = new CodeFile();
+                        codeFile.FileName = file.getFileName().toString();
+                        codeFile.Path = file.toAbsolutePath().normalize().toString();
+                        codeFile.Code = file.getFileName().toString().replace("Page.java","");
+                        codeFileList.add(codeFile);
+                    }
+                    return FileVisitResult.CONTINUE;
+                }
+            });
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return codeFileList;
+    }
+
+    public static void matchCodeFiles(String targetDir, List<CodeFile> codeFiles) throws IOException {
+        Path targetPath = Paths.get(targetDir);
+        if (!Files.exists(targetPath)) {
+            System.out.println("The target path does not exist: " + targetPath);
+            return;
+        }
+
+        try (FileWriter writer = new FileWriter("results.txt")) {
+            Files.walkFileTree(targetPath, new SimpleFileVisitor<>() {
+                @Override
+                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                    String fileName = file.getFileName().toString();
+                    for (CodeFile codeFile : codeFiles) {
+                        if (fileName.contains(codeFile.Code)) {
+                            writer.write("codeFile path:" + codeFile.Path + " ");
+                            writer.write("Match found: " + file.toAbsolutePath().normalize() + "\n");
                         }
                     }
+                    return FileVisitResult.CONTINUE;
                 }
-            }
+            });
+        } catch (IOException e) {
+            throw e;  // 或者进行其他异常处理
         }
     }
 
-    private static File findInJavaFolder(String javaFileName, File folder) {
-        if (folder.isDirectory()) {
-            File[] files = folder.listFiles();
-            if (files != null) {
-                for (File file : files) {
-                    if (file.isDirectory()) {
-                        // 递归搜索子文件夹
-                        File foundFile = findInJavaFolder(javaFileName, file);
-                        if (foundFile != null) {
-                            return foundFile;
-                        }
-                    } else if (file.getName().equals(javaFileName)) {
-                        return file;  // 返回匹配的文件对象
-                    }
-                }
-            }
-        }
-        return null;  // 没有找到文件
-    }
 
     public static void main(String[] args) throws IOException {
-        BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
+        List<CodeFile> codeFiles = flexibleFileFinder("C:\\qmy_java_demo\\JavaMatcherTestEnvironment\\JavaFile\\*\\web\\*Page.java");
 
-        System.out.println("请输入XLS文件夹的路径:");
-        String xlsFolderPath = reader.readLine();
-
-        System.out.println("请输入Java文件夹的路径:");
-        String javaFolderPath = reader.readLine();
-
-        File xlsFolder = new File(xlsFolderPath);
-        File javaFolder = new File(javaFolderPath);
-        FileWriter writer = new FileWriter("results.txt");
-
-        findJavaFiles(xlsFolder, javaFolder, writer);
-
-        writer.close();
+        if (codeFiles != null) {
+            matchCodeFiles("C:\\path\\to\\target\\folder", codeFiles);
+        }
     }
 }
