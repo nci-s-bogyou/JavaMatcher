@@ -54,21 +54,20 @@ public class Main {
         }
 
         try (FileWriter writer = new FileWriter("results.txt")) {
-            Files.walkFileTree(targetPath, new SimpleFileVisitor<>() {
-                @Override
-                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-                    String fileName = file.getFileName().toString();
-                    for (CodeFile codeFile : codeFiles) {
-                        if (fileName.contains(codeFile.Code)) {
-                            writer.write("codeFile path:" + codeFile.Path + " ");
-                            writer.write("Match found: " + file.toAbsolutePath().normalize() + "\n");
-                        }
-                    }
-                    return FileVisitResult.CONTINUE;
+            for (CodeFile codeFile : codeFiles) {
+                boolean matchFound = Files.walk(targetPath)
+                        .map(Path::getFileName)
+                        .map(Path::toString)
+                        .anyMatch(fileName -> fileName.contains(codeFile.Code));
+
+                if (matchFound) {
+                    writer.write("Match found for " + codeFile.Code + ": " + codeFile.Path + "\n");
+                } else {
+                    writer.write("No match found for " + codeFile.Code + "\n");
                 }
-            });
+            }
         } catch (IOException e) {
-            throw e;  // 或者进行其他异常处理
+            throw e;
         }
     }
 
